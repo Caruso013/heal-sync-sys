@@ -6,6 +6,19 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
+// Médico
+import MedicoLogin from "./pages/medico/Login";
+import DoctorDashboard from "./pages/medico/Dashboard";
+import DoctorProfile from "./pages/medico/Perfil";
+
+// Admin
+import AdminLogin from "./pages/admin/Login";
+import AdminMedicos from "./pages/admin/Medicos";
+import AdminConsultas from "./pages/admin/Consultas";
+
+// Atendente
+import AttendantDashboard from "./pages/atendente/Dashboard";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -16,7 +29,21 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+          {/* Médico Routes */}
+          <Route path="/medico/login" element={<MedicoLogin />} />
+          <Route path="/medico/dashboard" element={<DoctorDashboard />} />
+          <Route path="/medico/perfil" element={<DoctorProfile />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/medicos" element={<AdminMedicos />} />
+          <Route path="/admin/consultas" element={<AdminConsultas />} />
+          
+          {/* Atendente Routes */}
+          <Route path="/atendente" element={<AttendantDashboard />} />
+          
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
