@@ -5,14 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 // Médico
-import MedicoLogin from "./pages/medico/Login";
 import DoctorDashboard from "./pages/medico/Dashboard";
 import DoctorProfile from "./pages/medico/Perfil";
 
 // Admin
-import AdminLogin from "./pages/admin/Login";
 import AdminMedicos from "./pages/admin/Medicos";
 import AdminConsultas from "./pages/admin/Consultas";
 
@@ -29,14 +28,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
           
           {/* Médico Routes */}
-          <Route path="/medico/login" element={<MedicoLogin />} />
           <Route path="/medico/dashboard" element={<DoctorDashboard />} />
           <Route path="/medico/perfil" element={<DoctorProfile />} />
           
           {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/medicos" element={<AdminMedicos />} />
           <Route path="/admin/consultas" element={<AdminConsultas />} />
           

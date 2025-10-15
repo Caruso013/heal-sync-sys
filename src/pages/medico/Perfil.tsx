@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 import DashboardHeader from '@/components/DashboardHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Camera, Mail, Stethoscope, Calendar, Award, Clock, FileText } from 'lucide-react';
-import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 export default function DoctorProfile() {
@@ -113,9 +111,9 @@ export default function DoctorProfile() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('doctorSession');
-    navigate('/medico/login');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const getSpecialtyName = () => {

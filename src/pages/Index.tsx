@@ -36,15 +36,13 @@ const Index = () => {
                 <Heart className="w-4 h-4" />
                 Seja Parceiro
               </a>
-              <a href="#blog" className="flex items-center gap-2 text-gray-700 hover:text-purple-600 transition-colors">
-                <FileText className="w-4 h-4" />
-                Blog
-              </a>
               <a href="#contato" className="flex items-center gap-2 text-gray-700 hover:text-purple-600 transition-colors">
                 <Mail className="w-4 h-4" />
                 Contato
               </a>
-              <ShoppingCart className="w-5 h-5 text-gray-700 cursor-pointer hover:text-purple-600" />
+              <Button onClick={() => window.location.href = '/auth'} variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
+                Login
+              </Button>
               <Button onClick={() => window.open(WHATSAPP_URL, '_blank')} className="bg-[#16a34a] hover:bg-[#15803d] text-white">
                 Agendar Consulta
               </Button>

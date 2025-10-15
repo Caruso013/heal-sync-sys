@@ -1,53 +1,71 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UserPlus, Phone, Stethoscope, Clock } from 'lucide-react';
-import { api } from '@/lib/api-client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { UserPlus, Phone, Stethoscope, Clock, AlertCircle } from 'lucide-react';
 import { masks, validate, unmask } from '@/lib/masks';
 import { toast } from 'sonner';
 
 export default function AttendantDashboard() {
-  const [specialties, setSpecialties] = useState<any[]>([]);
-  const [pendingConsultations, setPendingConsultations] = useState<any[]>([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [pendingConsultations, setPendingConsultations] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     patientName: '',
     patientPhone: '',
     patientCPF: '',
-    specialityId: '',
+    specialty: '',
+    consultationType: 'teleconsulta' as 'teleconsulta' | 'renovacao_receita',
     description: '',
-    urgencyLevel: 'normal'
+    urgency: 'normal'
   });
 
   useEffect(() => {
-    loadSpecialties();
-    loadPendingConsultations();
-    
-    // Auto-refresh a cada 5 segundos
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(loadPendingConsultations, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadSpecialties = async () => {
-    try {
-      const result = await api.getSpecialties();
-      if (result.success) {
-        setSpecialties(result.data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar especialidades');
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      navigate('/auth');
+      return;
     }
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
+
+    if (!roles || roles[0]?.role !== 'atendente') {
+      navigate('/auth');
+      return;
+    }
+
+    loadPendingConsultations();
   };
 
   const loadPendingConsultations = async () => {
     try {
-      const result = await api.getPendingConsultations();
-      if (result.success) {
-        setPendingConsultations(result.data);
-      }
+      const { data, error } = await supabase
+        .from('consultations')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingConsultations(data || []);
     } catch (error) {
       console.error('Erro ao carregar consultas');
     }
@@ -66,7 +84,6 @@ export default function AttendantDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validações
     if (!validate.phone(formData.patientPhone)) {
       toast.error('Telefone inválido');
       return;
@@ -79,34 +96,42 @@ export default function AttendantDashboard() {
 
     setLoading(true);
     try {
-      const result = await api.createConsultation({
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { error } = await supabase.from('consultations').insert({
         patient_name: formData.patientName,
         patient_phone: unmask.phone(formData.patientPhone),
         patient_cpf: unmask.cpf(formData.patientCPF),
-        specialty_id: parseInt(formData.specialityId),
+        consultation_type: formData.consultationType,
+        specialty: formData.specialty,
         description: formData.description,
-        urgency_level: formData.urgencyLevel
+        urgency: formData.urgency,
+        created_by: session?.user.id
       });
 
-      if (result.success) {
-        toast.success('Consulta criada com sucesso!');
-        setFormData({
-          patientName: '',
-          patientPhone: '',
-          patientCPF: '',
-          specialityId: '',
-          description: '',
-          urgencyLevel: 'normal'
-        });
-        loadPendingConsultations();
-      } else {
-        toast.error(result.message || 'Erro ao criar consulta');
-      }
-    } catch (error) {
-      toast.error('Erro ao criar consulta');
+      if (error) throw error;
+
+      toast.success('Consulta criada com sucesso!');
+      setFormData({
+        patientName: '',
+        patientPhone: '',
+        patientCPF: '',
+        specialty: '',
+        consultationType: 'teleconsulta',
+        description: '',
+        urgency: 'normal'
+      });
+      loadPendingConsultations();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao criar consulta');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -135,144 +160,175 @@ export default function AttendantDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-bg">
-      <header className="bg-gradient-primary shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-white">📞 Painel do Atendente</h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <header className="bg-gradient-to-r from-purple-600 to-blue-500 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+            📞 Painel do Atendente
+          </h1>
+          <Button onClick={handleLogout} variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+            Sair
+          </Button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Formulário */}
-          <Card className="shadow-xl">
-            <CardHeader className="bg-gradient-primary text-white">
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Nova Consulta
+          {/* Formulário Aprimorado */}
+          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <UserPlus className="w-6 h-6" />
+                Nova Solicitação de Consulta
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label>Nome do Paciente</Label>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Nome do Paciente *</Label>
                   <Input
                     value={formData.patientName}
                     onChange={(e) => setField('patientName', e.target.value)}
+                    className="border-2 focus:border-purple-500"
                     required
                   />
                 </div>
 
-                <div>
-                  <Label>Telefone</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Telefone *</Label>
+                    <Input
+                      value={formData.patientPhone}
+                      onChange={(e) => setField('patientPhone', e.target.value)}
+                      placeholder="(00) 00000-0000"
+                      className="border-2 focus:border-purple-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">CPF *</Label>
+                    <Input
+                      value={formData.patientCPF}
+                      onChange={(e) => setField('patientCPF', e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="border-2 focus:border-purple-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Tipo de Consulta *</Label>
+                  <Select value={formData.consultationType} onValueChange={(value: any) => setField('consultationType', value)}>
+                    <SelectTrigger className="border-2 focus:border-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="teleconsulta">Teleconsulta</SelectItem>
+                      <SelectItem value="renovacao_receita">Renovação de Receita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Especialidade *</Label>
                   <Input
-                    value={formData.patientPhone}
-                    onChange={(e) => setField('patientPhone', e.target.value)}
-                    placeholder="(00) 00000-0000"
+                    value={formData.specialty}
+                    onChange={(e) => setField('specialty', e.target.value)}
+                    placeholder="Ex: Clínico Geral, Cardiologia..."
+                    className="border-2 focus:border-purple-500"
                     required
                   />
                 </div>
 
-                <div>
-                  <Label>CPF</Label>
-                  <Input
-                    value={formData.patientCPF}
-                    onChange={(e) => setField('patientCPF', e.target.value)}
-                    placeholder="000.000.000-00"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Especialidade</Label>
-                  <select
-                    value={formData.specialityId}
-                    onChange={(e) => setField('specialityId', e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                    required
-                  >
-                    <option value="">Selecione...</option>
-                    {specialties.map(s => (
-                      <option key={s.id} value={s.id}>{s.nome}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label>Sintomas/Descrição</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Sintomas/Descrição *</Label>
                   <Textarea
                     rows={4}
                     value={formData.description}
                     onChange={(e) => setField('description', e.target.value)}
+                    className="border-2 focus:border-purple-500"
+                    placeholder="Descreva os sintomas ou motivo da consulta..."
                     required
                   />
                 </div>
 
-                <div>
-                  <Label>Nível de Urgência</Label>
-                  <select
-                    value={formData.urgencyLevel}
-                    onChange={(e) => setField('urgencyLevel', e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="baixa">Baixa</option>
-                    <option value="normal">Normal</option>
-                    <option value="alta">Alta</option>
-                    <option value="urgente">Urgente</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Nível de Urgência *</Label>
+                  <Select value={formData.urgency} onValueChange={(value) => setField('urgency', value)}>
+                    <SelectTrigger className="border-2 focus:border-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                      <SelectItem value="urgente">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-primary hover:opacity-90 shadow-lg"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 shadow-lg text-lg py-6"
                   disabled={loading}
                 >
-                  {loading ? 'Criando...' : 'Solicitar Consulta'}
+                  {loading ? 'Criando...' : 'Solicitar Consulta Médica'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Lista de Pendentes */}
-          <Card className="shadow-xl">
-            <CardHeader className="bg-gradient-secondary text-white">
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Consultas Pendentes ({pendingConsultations.length})
+          {/* Lista de Pendentes Aprimorada */}
+          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur">
+            <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Clock className="w-6 h-6 animate-pulse" />
+                Fila de Atendimento ({pendingConsultations.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
                 {pendingConsultations.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">Nenhuma consulta pendente</p>
+                  <div className="text-center py-16 bg-gradient-to-b from-gray-50 to-white rounded-lg">
+                    <Stethoscope className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+                    <p className="text-lg font-semibold text-gray-600">Nenhuma consulta na fila</p>
+                    <p className="text-sm text-gray-400 mt-2">As novas solicitações aparecerão aqui</p>
                   </div>
                 ) : (
                   pendingConsultations.map((consultation) => (
-                    <div key={consultation.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                    <div key={consultation.id} className="border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl transition-all bg-gradient-to-br from-white to-gray-50 hover:border-purple-300">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-white font-bold flex-shrink-0">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg">
                             {consultation.patient_name?.charAt(0) || 'P'}
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-semibold">{consultation.patient_name}</h3>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${urgencyColors[consultation.urgency_level as keyof typeof urgencyColors]}`}>
-                                {urgencyLabels[consultation.urgency_level as keyof typeof urgencyLabels]}
-                              </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <h3 className="font-bold text-lg text-gray-900">{consultation.patient_name}</h3>
+                              <Badge className={`${urgencyColors[consultation.urgency as keyof typeof urgencyColors]} font-semibold`}>
+                                {urgencyLabels[consultation.urgency as keyof typeof urgencyLabels]}
+                              </Badge>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {consultation.consultation_type === 'teleconsulta' ? 'Teleconsulta' : 'Renovação de Receita'}
+                              </Badge>
                             </div>
-                            <div className="space-y-1 text-sm text-gray-600">
+                            <div className="space-y-2 text-sm text-gray-600">
                               <p className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 flex-shrink-0" />
-                                {consultation.patient_phone}
+                                <Phone className="w-4 h-4 flex-shrink-0 text-purple-600" />
+                                <span className="font-medium">{consultation.patient_phone}</span>
                               </p>
                               <p className="flex items-center gap-2">
-                                <Stethoscope className="w-4 h-4 flex-shrink-0" />
-                                {consultation.specialty}
+                                <Stethoscope className="w-4 h-4 flex-shrink-0 text-blue-600" />
+                                <span className="font-medium">{consultation.specialty}</span>
                               </p>
-                              <p className="text-xs text-gray-400">
+                              <p className="flex items-start gap-2 mt-2">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 text-gray-400 mt-0.5" />
+                                <span className="text-xs text-gray-500">{consultation.description}</span>
+                              </p>
+                              <p className="text-xs text-gray-400 flex items-center gap-1 mt-2">
+                                <Clock className="w-3 h-3" />
                                 {getTimeAgo(consultation.created_at)}
                               </p>
                             </div>

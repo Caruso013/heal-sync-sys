@@ -1,141 +1,206 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import DashboardHeader from '@/components/DashboardHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Clock, Activity, CheckCircle, Calendar, Phone, Stethoscope } from 'lucide-react';
-import { api } from '@/lib/api-client';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import DashboardHeader from "@/components/DashboardHeader";
+import { toast } from "sonner";
+import { Clock, User, FileText, CheckCircle2, PlayCircle, Activity } from "lucide-react";
 
-export default function DoctorDashboard() {
+const DoctorDashboard = () => {
   const navigate = useNavigate();
-  const [doctorData, setDoctorData] = useState<any>(null);
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [consultations, setConsultations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ pending: 0, active: 0, completed: 0 });
+  const [doctor, setDoctor] = useState<any>(null);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [isAvailable, setIsAvailable] = useState(false);
 
   useEffect(() => {
-    const session = localStorage.getItem('doctorSession');
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
     if (!session) {
-      navigate('/medico/login');
+      navigate('/auth');
       return;
     }
 
-    const data = JSON.parse(session);
-    setDoctorData(data);
-    setIsAvailable(data.is_available || false);
-    loadConsultations(data.id);
-  }, [navigate]);
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
 
-  const loadConsultations = async (doctorId: number) => {
+    if (!roles || roles[0]?.role !== 'medico') {
+      navigate('/auth');
+      return;
+    }
+
+    loadDoctorData(session.user.id);
+  };
+
+  const loadDoctorData = async (userId: string) => {
     try {
-      const result = await api.getConsultations(doctorId);
-      if (result.success) {
-        setConsultations(result.data);
-        calculateStats(result.data);
+      const { data: doctorData, error: doctorError } = await supabase
+        .from('doctors')
+        .select('*, profiles(*)')
+        .eq('user_id', userId)
+        .single();
+
+      if (doctorError) throw doctorError;
+
+      if (doctorData.status !== 'approved') {
+        toast.error("Sua conta ainda não foi aprovada pelo administrador");
+        navigate('/auth');
+        return;
       }
-    } catch (error) {
-      toast.error('Erro ao carregar consultas');
+
+      setDoctor(doctorData);
+      setIsAvailable(doctorData.is_available);
+      loadConsultations(doctorData.id);
+    } catch (error: any) {
+      toast.error("Erro ao carregar dados");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (data: any[]) => {
-    setStats({
-      pending: data.filter(c => c.status === 'pending').length,
-      active: data.filter(c => c.status === 'active').length,
-      completed: data.filter(c => c.status === 'completed').length
-    });
-  };
+  const loadConsultations = async (doctorId: string) => {
+    const { data, error } = await supabase
+      .from('consultations')
+      .select('*')
+      .eq('doctor_id', doctorId)
+      .in('status', ['pending', 'in_progress'])
+      .order('created_at', { ascending: false });
 
-  const handleToggleAvailability = async () => {
-    try {
-      const newStatus = !isAvailable;
-      const result = await api.toggleAvailability(doctorData.id, newStatus);
-      
-      if (result.success) {
-        setIsAvailable(newStatus);
-        const updatedSession = { ...doctorData, is_available: newStatus };
-        localStorage.setItem('doctorSession', JSON.stringify(updatedSession));
-        toast.success(newStatus ? 'Você está disponível!' : 'Você está indisponível');
-      }
-    } catch (error) {
-      toast.error('Erro ao atualizar disponibilidade');
+    if (!error && data) {
+      setConsultations(data);
     }
   };
 
-  const handleStartConsultation = async (id: number) => {
-    try {
-      const result = await api.startConsultation(id);
-      if (result.success) {
-        toast.success('Consulta iniciada!');
-        loadConsultations(doctorData.id);
-      }
-    } catch (error) {
-      toast.error('Erro ao iniciar consulta');
+  const handleToggleAvailability = async (checked: boolean) => {
+    if (!doctor) return;
+
+    const { error } = await supabase
+      .from('doctors')
+      .update({ is_available: checked })
+      .eq('id', doctor.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar disponibilidade");
+    } else {
+      setIsAvailable(checked);
+      toast.success(checked ? "Você está disponível para consultas" : "Você está indisponível");
     }
   };
 
-  const handleCompleteConsultation = async (id: number) => {
-    try {
-      const result = await api.completeConsultation(id);
-      if (result.success) {
-        toast.success('Consulta concluída!');
-        loadConsultations(doctorData.id);
-      }
-    } catch (error) {
-      toast.error('Erro ao concluir consulta');
+  const handleStartConsultation = async (consultationId: string) => {
+    const { error } = await supabase
+      .from('consultations')
+      .update({ 
+        status: 'in_progress',
+        started_at: new Date().toISOString()
+      })
+      .eq('id', consultationId);
+
+    if (error) {
+      toast.error("Erro ao iniciar consulta");
+    } else {
+      toast.success("Consulta iniciada!");
+      loadConsultations(doctor.id);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('doctorSession');
-    navigate('/medico/login');
+  const handleCompleteConsultation = async (consultationId: string) => {
+    const { error } = await supabase
+      .from('consultations')
+      .update({ 
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', consultationId);
+
+    if (error) {
+      toast.error("Erro ao finalizar consulta");
+    } else {
+      toast.success("Consulta finalizada!");
+      loadConsultations(doctor.id);
+    }
   };
 
-  if (loading || !doctorData) {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-bg flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-bg">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  const getConsultationTypeBadge = (type: string) => {
+    return type === 'teleconsulta' ? (
+      <Badge className="bg-blue-500">Teleconsulta</Badge>
+    ) : (
+      <Badge className="bg-green-500">Renovação de Receita</Badge>
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      pending: <Badge variant="outline" className="bg-medical-orange/10 text-medical-orange">Pendente</Badge>,
+      in_progress: <Badge className="bg-medical-blue">Em Andamento</Badge>,
+      completed: <Badge className="bg-medical-green">Concluída</Badge>
+    };
+    return badges[status as keyof typeof badges];
+  };
+
+  const pendingCount = consultations.filter(c => c.status === 'pending').length;
+  const inProgressCount = consultations.filter(c => c.status === 'in_progress').length;
+
   return (
     <div className="min-h-screen bg-gradient-bg">
-      <DashboardHeader title="👨‍⚕️ Painel Médico" role="medico" onLogout={handleLogout} />
-      
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      <DashboardHeader 
+        title="👨‍⚕️ Painel Médico"
+        role="medico"
+        onLogout={handleLogout}
+      />
+
+      <div className="container mx-auto p-6 space-y-6 max-w-7xl">
         {/* Status Card */}
-        <Card className="bg-gradient-primary text-white shadow-xl hover:shadow-2xl transition-shadow">
+        <Card className="bg-gradient-primary text-white shadow-xl">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <div className={`w-4 h-4 rounded-full ${isAvailable ? 'bg-medical-green' : 'bg-medical-red'} animate-pulse`} />
                 <div>
                   <h2 className="text-2xl font-bold">
-                    Você está {isAvailable ? 'ONLINE' : 'OFFLINE'}
+                    Dr(a). {doctor?.profiles?.full_name || 'Médico'}
                   </h2>
                   <p className="text-white/80">
                     {isAvailable ? 'Disponível para atendimentos' : 'Indisponível no momento'}
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={handleToggleAvailability}
-                variant="outline"
-                className="bg-white text-primary hover:bg-white/90 font-semibold"
-              >
-                {isAvailable ? 'Ficar Indisponível' : 'Ficar Disponível'}
-              </Button>
+              <Switch
+                id="availability"
+                checked={isAvailable}
+                onCheckedChange={handleToggleAvailability}
+                className="data-[state=checked]:bg-medical-green"
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -143,13 +208,12 @@ export default function DoctorDashboard() {
                   <Clock className="w-6 h-6 text-medical-orange" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">{stats.pending}</p>
-                  <p className="text-sm text-muted-foreground">Aguardando atendimento</p>
+                  <p className="text-3xl font-bold">{pendingCount}</p>
+                  <p className="text-sm text-muted-foreground">Pendentes</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -157,22 +221,21 @@ export default function DoctorDashboard() {
                   <Activity className="w-6 h-6 text-medical-blue" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">{stats.active}</p>
-                  <p className="text-sm text-muted-foreground">Consultas ativas</p>
+                  <p className="text-3xl font-bold">{inProgressCount}</p>
+                  <p className="text-sm text-muted-foreground">Em Andamento</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-medical-green/10 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-medical-green" />
+                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">{stats.completed}</p>
-                  <p className="text-sm text-muted-foreground">Atendimentos finalizados</p>
+                  <p className="text-lg font-bold">{doctor?.specialty}</p>
+                  <p className="text-sm text-muted-foreground">Especialidade</p>
                 </div>
               </div>
             </CardContent>
@@ -180,92 +243,70 @@ export default function DoctorDashboard() {
         </div>
 
         {/* Consultations List */}
-        <Card className="shadow-lg">
+        <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Minhas Consultas
-            </CardTitle>
+            <CardTitle>Minhas Consultas</CardTitle>
           </CardHeader>
           <CardContent>
             {consultations.length === 0 ? (
               <div className="text-center py-12">
-                <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-lg font-semibold text-gray-600">Nenhuma consulta disponível</p>
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-lg font-semibold text-gray-600">Nenhuma consulta pendente</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Quando houver novas consultas atribuídas a você, elas aparecerão aqui.
+                  Quando houver novas consultas, elas aparecerão aqui.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {consultations.map((consultation) => {
-                  const statusColors = {
-                    pending: 'bg-medical-orange/10 text-medical-orange',
-                    active: 'bg-medical-blue/10 text-medical-blue',
-                    completed: 'bg-medical-green/10 text-medical-green'
-                  };
-
-                  const statusLabels = {
-                    pending: 'Pendente',
-                    active: 'Em Atendimento',
-                    completed: 'Concluída'
-                  };
-
-                  return (
-                    <div key={consultation.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-white font-bold flex-shrink-0">
-                            {consultation.patient_name?.charAt(0) || 'P'}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <h3 className="font-semibold text-gray-900">{consultation.patient_name}</h3>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[consultation.status as keyof typeof statusColors]}`}>
-                                {statusLabels[consultation.status as keyof typeof statusLabels]}
-                              </span>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="flex items-center gap-2 text-sm text-gray-600">
-                                <Phone className="w-4 h-4 flex-shrink-0" />
-                                {consultation.patient_phone}
-                              </p>
-                              <p className="flex items-center gap-2 text-sm text-gray-600">
-                                <Stethoscope className="w-4 h-4 flex-shrink-0" />
-                                {consultation.specialty_name}
-                              </p>
-                            </div>
-                          </div>
+                {consultations.map((consultation) => (
+                  <div key={consultation.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{consultation.patient_name}</span>
+                          {getStatusBadge(consultation.status)}
+                          {getConsultationTypeBadge(consultation.consultation_type)}
                         </div>
-                        <div className="flex gap-2">
-                          {consultation.status === 'pending' && (
-                            <Button
-                              onClick={() => handleStartConsultation(consultation.id)}
-                              className="bg-medical-blue hover:bg-medical-blue/90"
-                              size="sm"
-                            >
-                              Iniciar
-                            </Button>
-                          )}
-                          {consultation.status === 'active' && (
-                            <Button
-                              onClick={() => handleCompleteConsultation(consultation.id)}
-                              className="bg-medical-green hover:bg-medical-green/90"
-                              size="sm"
-                            >
-                              Concluir
-                            </Button>
-                          )}
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {consultation.description}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Criado: {new Date(consultation.created_at).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {consultation.status === 'pending' && (
+                          <Button
+                            onClick={() => handleStartConsultation(consultation.id)}
+                            className="bg-medical-blue hover:bg-medical-blue/90"
+                            size="sm"
+                          >
+                            <PlayCircle className="h-4 w-4 mr-2" />
+                            Iniciar
+                          </Button>
+                        )}
+                        {consultation.status === 'in_progress' && (
+                          <Button
+                            onClick={() => handleCompleteConsultation(consultation.id)}
+                            className="bg-medical-green hover:bg-medical-green/90"
+                            size="sm"
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Finalizar
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
-}
+};
+
+export default DoctorDashboard;
