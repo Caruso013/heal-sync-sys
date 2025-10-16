@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Filter, Search, RefreshCw, Mail, Phone, Stethoscope, UserCheck, UserX } from 'lucide-react';
+import { Filter, Search, RefreshCw, Mail, Stethoscope, UserCheck, UserX, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminMedicos() {
@@ -143,7 +143,24 @@ export default function AdminMedicos() {
     <div className="min-h-screen bg-gradient-bg">
       <DashboardHeader title="🛡️ Painel Admin - Médicos" role="admin" onLogout={handleLogout} />
       
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
+        {/* Quick Actions */}
+        <div className="flex gap-4">
+          <Button 
+            onClick={() => navigate('/admin/criar-atendente')}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Criar Atendente
+          </Button>
+          <Button 
+            onClick={() => navigate('/admin/consultas')}
+            variant="outline"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Ver Consultas
+          </Button>
+        </div>
         {/* Filtros */}
         <Card className="shadow-lg">
           <CardContent className="pt-6">

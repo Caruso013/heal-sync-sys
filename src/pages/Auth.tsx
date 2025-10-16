@@ -18,7 +18,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
-  const [signupRole, setSignupRole] = useState<"medico" | "atendente" | "admin">("atendente");
+  const [signupRole, setSignupRole] = useState<"medico" | "atendente" | "admin">("medico");
   const [doctorCRM, setDoctorCRM] = useState("");
   const [doctorSpecialty, setDoctorSpecialty] = useState("");
 
@@ -208,7 +208,6 @@ const Auth = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="atendente">Atendente</SelectItem>
                       <SelectItem value="medico">Médico</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>

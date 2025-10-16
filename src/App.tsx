@@ -14,6 +14,7 @@ import DoctorProfile from "./pages/medico/Perfil";
 // Admin
 import AdminMedicos from "./pages/admin/Medicos";
 import AdminConsultas from "./pages/admin/Consultas";
+import CriarAtendente from "./pages/admin/CriarAtendente";
 
 // Atendente
 import AttendantDashboard from "./pages/atendente/Dashboard";
@@ -37,6 +38,7 @@ const App = () => (
           {/* Admin Routes */}
           <Route path="/admin/medicos" element={<AdminMedicos />} />
           <Route path="/admin/consultas" element={<AdminConsultas />} />
+          <Route path="/admin/criar-atendente" element={<CriarAtendente />} />
           
           {/* Atendente Routes */}
           <Route path="/atendente" element={<AttendantDashboard />} />
