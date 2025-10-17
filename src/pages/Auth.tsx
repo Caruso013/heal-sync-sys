@@ -102,19 +102,14 @@ const Auth = () => {
           role: signupRole
         });
 
-        // If doctor, create doctor profile
-        if (signupRole === 'medico') {
-          await supabase.from('doctors').insert({
-            user_id: data.user.id,
-            crm: doctorCRM,
-            specialty: doctorSpecialty,
-            status: 'pending'
-          });
-          toast.success("Cadastro realizado! Aguarde aprovação do administrador.");
-        } else {
-          toast.success("Cadastro realizado com sucesso!");
-          navigateToRole(signupRole);
-        }
+        // Always create doctor profile for new signups
+        await supabase.from('doctors').insert({
+          user_id: data.user.id,
+          crm: doctorCRM,
+          specialty: doctorSpecialty,
+          status: 'pending'
+        });
+        toast.success("Cadastro realizado! Aguarde aprovação do administrador.");
       }
     } catch (error: any) {
       toast.error(error.message || "Erro ao cadastrar");
@@ -201,41 +196,31 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Tipo de Conta</Label>
-                  <Select value={signupRole} onValueChange={(value: any) => setSignupRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="medico">Médico</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Cadastro de Médico:</strong> Seu cadastro precisa ser aprovado pelo administrador antes de acessar o sistema.
+                  </p>
                 </div>
                 
-                {signupRole === 'medico' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="crm">CRM</Label>
-                      <Input
-                        id="crm"
-                        value={doctorCRM}
-                        onChange={(e) => setDoctorCRM(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="specialty">Especialidade</Label>
-                      <Input
-                        id="specialty"
-                        value={doctorSpecialty}
-                        onChange={(e) => setDoctorSpecialty(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="crm">CRM</Label>
+                  <Input
+                    id="crm"
+                    value={doctorCRM}
+                    onChange={(e) => setDoctorCRM(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="specialty">Especialidade</Label>
+                  <Input
+                    id="specialty"
+                    value={doctorSpecialty}
+                    onChange={(e) => setDoctorSpecialty(e.target.value)}
+                    placeholder="Ex: Clínico Geral, Cardiologia..."
+                    required
+                  />
+                </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Cadastrando..." : "Cadastrar"}

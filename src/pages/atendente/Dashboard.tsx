@@ -8,14 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Phone, Stethoscope, Clock, AlertCircle } from 'lucide-react';
+import { UserPlus, Phone, Stethoscope, Clock, AlertCircle, PlayCircle, Loader2 } from 'lucide-react';
 import { masks, validate, unmask } from '@/lib/masks';
 import { toast } from 'sonner';
+import { useConsultationQueue } from '@/hooks/useConsultationQueue';
+import { Progress } from '@/components/ui/progress';
 
 export default function AttendantDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [pendingConsultations, setPendingConsultations] = useState<any[]>([]);
+  const [activeQueueId, setActiveQueueId] = useState<string | null>(null);
+  const { queueStatus, timeRemaining, callNextDoctor } = useConsultationQueue(activeQueueId);
   const [formData, setFormData] = useState({
     patientName: '',
     patientPhone: '',
@@ -297,46 +301,106 @@ export default function AttendantDashboard() {
                     <p className="text-sm text-gray-400 mt-2">As novas solicitações aparecerão aqui</p>
                   </div>
                 ) : (
-                  pendingConsultations.map((consultation) => (
-                    <div key={consultation.id} className="border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl transition-all bg-gradient-to-br from-white to-gray-50 hover:border-purple-300">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg">
-                            {consultation.patient_name?.charAt(0) || 'P'}
+                  pendingConsultations.map((consultation) => {
+                    const isActiveQueue = activeQueueId === consultation.id;
+                    const consultationQueue = isActiveQueue ? queueStatus : null;
+                    
+                    return (
+                      <div key={consultation.id} className="border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl transition-all bg-gradient-to-br from-white to-gray-50 hover:border-purple-300 animate-fade-in">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg">
+                              {consultation.patient_name?.charAt(0) || 'P'}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <h3 className="font-bold text-lg text-gray-900">{consultation.patient_name}</h3>
+                                <Badge className={`${urgencyColors[consultation.urgency as keyof typeof urgencyColors]} font-semibold`}>
+                                  {urgencyLabels[consultation.urgency as keyof typeof urgencyLabels]}
+                                </Badge>
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  {consultation.consultation_type === 'teleconsulta' ? 'Teleconsulta' : 'Renovação de Receita'}
+                                </Badge>
+                                {consultation.call_attempts > 0 && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                    {consultation.call_attempts} tentativa(s)
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="space-y-2 text-sm text-gray-600">
+                                <p className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 flex-shrink-0 text-purple-600" />
+                                  <span className="font-medium">{consultation.patient_phone}</span>
+                                </p>
+                                <p className="flex items-center gap-2">
+                                  <Stethoscope className="w-4 h-4 flex-shrink-0 text-blue-600" />
+                                  <span className="font-medium">{consultation.specialty}</span>
+                                </p>
+                                <p className="flex items-start gap-2 mt-2">
+                                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-gray-400 mt-0.5" />
+                                  <span className="text-xs text-gray-500">{consultation.description}</span>
+                                </p>
+                                <p className="text-xs text-gray-400 flex items-center gap-1 mt-2">
+                                  <Clock className="w-3 h-3" />
+                                  {getTimeAgo(consultation.created_at)}
+                                </p>
+                              </div>
+
+                              {/* Queue Status */}
+                              {isActiveQueue && consultationQueue && (
+                                <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 animate-scale-in">
+                                  {consultationQueue.status === 'calling' && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-sm font-semibold text-blue-900">
+                                          Chamando: Dr(a). {consultationQueue.doctorName}
+                                        </p>
+                                        <span className="text-lg font-bold text-blue-600">
+                                          {timeRemaining}s
+                                        </span>
+                                      </div>
+                                      <Progress value={(timeRemaining / 15) * 100} className="h-2" />
+                                      <p className="text-xs text-blue-600">
+                                        Aguardando resposta do médico...
+                                      </p>
+                                    </div>
+                                  )}
+                                  {consultationQueue.status === 'accepted' && (
+                                    <p className="text-sm font-semibold text-green-700 flex items-center gap-2">
+                                      ✅ Consulta aceita!
+                                    </p>
+                                  )}
+                                  {consultationQueue.status === 'waiting' && (
+                                    <p className="text-sm font-semibold text-orange-700 flex items-center gap-2">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      Procurando médico disponível...
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-bold text-lg text-gray-900">{consultation.patient_name}</h3>
-                              <Badge className={`${urgencyColors[consultation.urgency as keyof typeof urgencyColors]} font-semibold`}>
-                                {urgencyLabels[consultation.urgency as keyof typeof urgencyLabels]}
-                              </Badge>
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                {consultation.consultation_type === 'teleconsulta' ? 'Teleconsulta' : 'Renovação de Receita'}
-                              </Badge>
-                            </div>
-                            <div className="space-y-2 text-sm text-gray-600">
-                              <p className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 flex-shrink-0 text-purple-600" />
-                                <span className="font-medium">{consultation.patient_phone}</span>
-                              </p>
-                              <p className="flex items-center gap-2">
-                                <Stethoscope className="w-4 h-4 flex-shrink-0 text-blue-600" />
-                                <span className="font-medium">{consultation.specialty}</span>
-                              </p>
-                              <p className="flex items-start gap-2 mt-2">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0 text-gray-400 mt-0.5" />
-                                <span className="text-xs text-gray-500">{consultation.description}</span>
-                              </p>
-                              <p className="text-xs text-gray-400 flex items-center gap-1 mt-2">
-                                <Clock className="w-3 h-3" />
-                                {getTimeAgo(consultation.created_at)}
-                              </p>
-                            </div>
+
+                          {/* Action Button */}
+                          <div>
+                            {!isActiveQueue && !consultation.doctor_id && (
+                              <Button
+                                onClick={() => {
+                                  setActiveQueueId(consultation.id);
+                                  setTimeout(() => callNextDoctor(), 100);
+                                }}
+                                className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg hover-scale"
+                                size="sm"
+                              >
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                Iniciar Busca
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </CardContent>

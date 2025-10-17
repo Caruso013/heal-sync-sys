@@ -16,16 +16,21 @@ export type Database = {
     Tables: {
       consultations: {
         Row: {
+          call_attempts: number | null
+          call_started_at: string | null
+          call_timeout_at: string | null
           completed_at: string | null
           consultation_type: Database["public"]["Enums"]["consultation_type"]
           created_at: string | null
           created_by: string | null
           description: string | null
           doctor_id: string | null
+          doctors_called: string[] | null
           id: string
           patient_cpf: string
           patient_name: string
           patient_phone: string
+          queue_position: number | null
           specialty: string
           started_at: string | null
           status: Database["public"]["Enums"]["consultation_status"]
@@ -33,16 +38,21 @@ export type Database = {
           urgency: string
         }
         Insert: {
+          call_attempts?: number | null
+          call_started_at?: string | null
+          call_timeout_at?: string | null
           completed_at?: string | null
           consultation_type: Database["public"]["Enums"]["consultation_type"]
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           doctor_id?: string | null
+          doctors_called?: string[] | null
           id?: string
           patient_cpf: string
           patient_name: string
           patient_phone: string
+          queue_position?: number | null
           specialty: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["consultation_status"]
@@ -50,16 +60,21 @@ export type Database = {
           urgency: string
         }
         Update: {
+          call_attempts?: number | null
+          call_started_at?: string | null
+          call_timeout_at?: string | null
           completed_at?: string | null
           consultation_type?: Database["public"]["Enums"]["consultation_type"]
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           doctor_id?: string | null
+          doctors_called?: string[] | null
           id?: string
           patient_cpf?: string
           patient_name?: string
           patient_phone?: string
+          queue_position?: number | null
           specialty?: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["consultation_status"]
@@ -165,15 +180,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_consultation: {
+        Args: { p_consultation_id: string; p_doctor_user_id: string }
+        Returns: boolean
+      }
+      call_next_doctor: {
+        Args: { p_consultation_id: string }
+        Returns: {
+          doctor_id: string
+          doctor_name: string
+          timeout_at: string
+        }[]
+      }
       check_and_create_admin: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_next_available_doctor: {
+        Args: { p_excluded_doctors: string[]; p_specialty: string }
+        Returns: string
       }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      reject_or_timeout_consultation: {
+        Args: { p_consultation_id: string }
         Returns: boolean
       }
     }

@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import DashboardHeader from "@/components/DashboardHeader";
+import CallNotification from "@/components/CallNotification";
 import { toast } from "sonner";
-import { Clock, User, FileText, CheckCircle2, PlayCircle, Activity } from "lucide-react";
+import { Clock, User, FileText, CheckCircle2, PlayCircle, Activity, AlertCircle } from "lucide-react";
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +21,13 @@ const DoctorDashboard = () => {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (doctor) {
+      const interval = setInterval(() => loadConsultations(doctor.id), 5000);
+      return () => clearInterval(interval);
+    }
+  }, [doctor]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -85,6 +93,13 @@ const DoctorDashboard = () => {
   const handleToggleAvailability = async (checked: boolean) => {
     if (!doctor) return;
 
+    const hasActiveConsultation = consultations.some(c => c.status === 'in_progress');
+    
+    if (!checked && hasActiveConsultation) {
+      toast.error("Você não pode ficar indisponível com consulta em andamento!");
+      return;
+    }
+
     const { error } = await supabase
       .from('doctors')
       .update({ is_available: checked })
@@ -133,6 +148,13 @@ const DoctorDashboard = () => {
   };
 
   const handleLogout = async () => {
+    const hasActiveConsultation = consultations.some(c => c.status === 'in_progress');
+    
+    if (hasActiveConsultation) {
+      toast.error("Você não pode sair com consulta em andamento!");
+      return;
+    }
+    
     await supabase.auth.signOut();
     navigate('/auth');
   };
@@ -167,11 +189,22 @@ const DoctorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-bg">
+      <CallNotification />
+      
       <DashboardHeader 
         title="👨‍⚕️ Painel Médico"
         role="medico"
         onLogout={handleLogout}
       />
+
+      {!isAvailable && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 py-3">
+          <div className="container mx-auto px-6 flex items-center justify-center gap-2 text-yellow-700">
+            <AlertCircle className="h-5 w-5" />
+            <p className="font-medium">Você está indisponível. Ative sua disponibilidade para receber consultas.</p>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto p-6 space-y-6 max-w-7xl">
         {/* Status Card */}
