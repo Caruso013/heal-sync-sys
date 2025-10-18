@@ -175,6 +175,53 @@ export type Database = {
         }
         Relationships: []
       }
+      prescriptions: {
+        Row: {
+          id: number
+          consultation_id: number
+          doctor_id: string | null
+          file_path: string
+          file_name: string
+          file_size: number | null
+          mime_type: string | null
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: number
+          consultation_id: number
+          doctor_id?: string | null
+          file_path: string
+          file_name: string
+          file_size?: number | null
+          mime_type?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: number
+          consultation_id?: number
+          doctor_id?: string | null
+          file_path?: string
+          file_name?: string
+          file_size?: number | null
+          mime_type?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_requests"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

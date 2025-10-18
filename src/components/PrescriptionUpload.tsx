@@ -15,11 +15,15 @@ interface PrescriptionUploadProps {
 }
 
 interface Prescription {
-  id: string;
+  id: number;
+  consultation_id?: number;
+  doctor_id?: string | null;
   file_name: string;
   file_path: string;
+  file_size?: number | null;
+  mime_type?: string | null;
   notes: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export default function PrescriptionUpload({ 
@@ -36,14 +40,15 @@ export default function PrescriptionUpload({
   const loadPrescriptions = async () => {
     setLoading(true);
     try {
+      const consultationIdNum = Number(consultationId);
       const { data, error } = await supabase
         .from('prescriptions')
         .select('*')
-        .eq('consultation_id', consultationId)
-        .order('created_at', { ascending: false });
+        .eq('consultation_id', consultationIdNum)
+        .order('created_at', { ascending: false });      
 
       if (error) throw error;
-      setPrescriptions(data || []);
+      setPrescriptions((data as any) || []);
     } catch (error: any) {
       console.error('Erro ao carregar receitas:', error);
     } finally {
@@ -102,7 +107,7 @@ export default function PrescriptionUpload({
       const { error: dbError } = await supabase
         .from('prescriptions')
         .insert({
-          consultation_id: consultationId,
+          consultation_id: Number(consultationId),
           doctor_id: doctorId,
           file_path: filePath,
           file_name: selectedFile.name,
@@ -151,7 +156,7 @@ export default function PrescriptionUpload({
     }
   };
 
-  const handleDelete = async (prescriptionId: string, filePath: string) => {
+  const handleDelete = async (prescriptionId: number, filePath: string) => {
     if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
 
     try {
