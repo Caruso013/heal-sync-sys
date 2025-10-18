@@ -6,6 +6,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Médico
 import DoctorDashboard from "./pages/medico/Dashboard";
@@ -32,16 +33,58 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
 
           {/* Médico Routes */}
-          <Route path="/medico/dashboard" element={<DoctorDashboard />} />
-          <Route path="/medico/perfil" element={<DoctorProfile />} />
+          <Route 
+            path="/medico/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['medico']}>
+                <DoctorDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/medico/perfil" 
+            element={
+              <ProtectedRoute allowedRoles={['medico']}>
+                <DoctorProfile />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Admin Routes */}
-          <Route path="/admin/medicos" element={<AdminMedicos />} />
-          <Route path="/admin/consultas" element={<AdminConsultas />} />
-          <Route path="/admin/criar-atendente" element={<CriarAtendente />} />
+          <Route 
+            path="/admin/medicos" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminMedicos />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/consultas" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminConsultas />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/criar-atendente" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <CriarAtendente />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Atendente Routes */}
-          <Route path="/atendente" element={<AttendantDashboard />} />
+          <Route 
+            path="/atendente" 
+            element={
+              <ProtectedRoute allowedRoles={['atendente']}>
+                <AttendantDashboard />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
