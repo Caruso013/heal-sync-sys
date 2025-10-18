@@ -110,23 +110,10 @@ export default function Historico() {
 
   const loadConsultationDetails = async (consultation: any) => {
     setSelectedConsultation(consultation);
-
-    // Carregar histórico
-    const { data: historyData } = await supabase
-      .from('consultation_history')
-      .select('*')
-      .eq('consultation_id', consultation.id)
-      .order('created_at', { ascending: true });
-
-    setConsultationHistory(historyData || []);
-
-    // Carregar receitas
-    const { data: prescData } = await supabase
-      .from('prescriptions')
-      .select('*')
-      .eq('consultation_id', consultation.id);
-
-    setPrescriptions(prescData || []);
+    
+    // TODO: Implementar carregamento de histórico e receitas quando as tabelas forem criadas
+    setConsultationHistory([]);
+    setPrescriptions([]);
   };
 
   const handleDownloadPrescription = async (prescription: any) => {
