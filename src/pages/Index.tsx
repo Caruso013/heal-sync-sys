@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText, Users, Briefcase, Activity, Heart, Zap, ShoppingCart, MessageCircle, Home, List, Mail, Facebook, Instagram, Linkedin, Twitter, Shield } from 'lucide-react';
@@ -5,6 +6,8 @@ import { FileText, Users, Briefcase, Activity, Heart, Zap, ShoppingCart, Message
 const WHATSAPP_URL = 'https://api.whatsapp.com/send/?phone=%2B5519993511031&text&type=phone_number&app_absent=0';
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Header/Navbar */}
@@ -40,7 +43,7 @@ const Index = () => {
                 <Mail className="w-4 h-4" />
                 Contato
               </a>
-              <Button onClick={() => window.location.href = '/auth'} variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
+              <Button onClick={() => navigate('/auth')} variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
                 Login
               </Button>
               <Button onClick={() => window.open(WHATSAPP_URL, '_blank')} className="bg-[#16a34a] hover:bg-[#15803d] text-white">
