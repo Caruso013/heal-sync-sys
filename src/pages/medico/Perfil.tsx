@@ -59,14 +59,16 @@ export default function DoctorProfile() {
           specialty: profile.specialty,
           crm: profile.crm,
         })
-        .eq('id', profile.id);
+        .eq('user_id', profile.user_id);
 
       if (error) throw error;
 
-      toast.success('Perfil atualizado!');
+      toast.success('Perfil atualizado com sucesso!');
       setIsEditing(false);
+      await loadProfile(profile.user_id);
     } catch (error: any) {
-      toast.error('Erro ao atualizar perfil');
+      console.error('Erro ao atualizar perfil:', error);
+      toast.error('Erro ao atualizar perfil: ' + error.message);
     }
   };
 

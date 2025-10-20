@@ -145,10 +145,17 @@ export default function AdminMedicos() {
       
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
         {/* Quick Actions */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
+          <Button 
+            onClick={() => navigate('/admin/criar-medico')}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            <Stethoscope className="w-4 h-4 mr-2" />
+            Criar Médico
+          </Button>
           <Button 
             onClick={() => navigate('/admin/criar-atendente')}
-            className="bg-gradient-primary hover:opacity-90"
+            className="bg-medical-blue hover:opacity-90 text-white"
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Criar Atendente

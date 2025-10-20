@@ -16,6 +16,7 @@ import DoctorProfile from "./pages/medico/Perfil";
 import AdminMedicos from "./pages/admin/Medicos";
 import AdminConsultas from "./pages/admin/Consultas";
 import CriarAtendente from "./pages/admin/CriarAtendente";
+import CriarMedico from "./pages/admin/CriarMedico";
 
 // Atendente
 import AttendantDashboard from "./pages/atendente/Dashboard";
@@ -67,14 +68,22 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/admin/criar-atendente" 
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <CriarAtendente />
-              </ProtectedRoute>
-            } 
-          />
+            <Route 
+              path="/admin/criar-atendente" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <CriarAtendente />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/criar-medico" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <CriarMedico />
+                </ProtectedRoute>
+              } 
+            />
 
           {/* Atendente Routes */}
           <Route 

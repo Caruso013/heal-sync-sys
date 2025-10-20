@@ -43,9 +43,6 @@ const Index = () => {
                 <Mail className="w-4 h-4" />
                 Contato
               </a>
-              <Button onClick={() => navigate('/auth')} variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
-                Login
-              </Button>
               <Button onClick={() => window.open(WHATSAPP_URL, '_blank')} className="bg-[#16a34a] hover:bg-[#15803d] text-white">
                 Agendar Consulta
               </Button>

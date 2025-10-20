@@ -100,16 +100,19 @@ const DoctorDashboard = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from('doctors')
-      .update({ is_available: checked })
-      .eq('id', doctor.id);
+    try {
+      const { error } = await supabase
+        .from('doctors')
+        .update({ is_available: checked })
+        .eq('user_id', doctor.user_id);
 
-    if (error) {
-      toast.error("Erro ao atualizar disponibilidade");
-    } else {
+      if (error) throw error;
+
       setIsAvailable(checked);
-      toast.success(checked ? "Você está disponível para consultas" : "Você está indisponível");
+      toast.success(checked ? "Você está disponível para consultas!" : "Você está indisponível");
+    } catch (error: any) {
+      console.error("Erro ao atualizar disponibilidade:", error);
+      toast.error("Erro ao atualizar disponibilidade: " + error.message);
     }
   };
 
