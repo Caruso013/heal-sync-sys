@@ -101,19 +101,24 @@ const DoctorDashboard = () => {
     }
 
     try {
-      console.log("Atualizando disponibilidade:", { doctor_id: doctor.id, checked, user_id: doctor.user_id });
+      const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        navigate('/auth');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('doctors')
         .update({ is_available: checked })
-        .eq('id', doctor.id)
+        .eq('user_id', session.user.id)
         .select();
-
-      console.log("Resposta da atualização:", { data, error });
 
       if (error) throw error;
 
       setIsAvailable(checked);
+      setDoctor({ ...doctor, is_available: checked });
       toast.success(checked ? "Você está disponível para consultas!" : "Você está indisponível");
     } catch (error: any) {
       console.error("Erro ao atualizar disponibilidade:", error);
