@@ -101,10 +101,15 @@ const DoctorDashboard = () => {
     }
 
     try {
-      const { error } = await supabase
+      console.log("Atualizando disponibilidade:", { doctor_id: doctor.id, checked, user_id: doctor.user_id });
+      
+      const { data, error } = await supabase
         .from('doctors')
         .update({ is_available: checked })
-        .eq('user_id', doctor.user_id);
+        .eq('id', doctor.id)
+        .select();
+
+      console.log("Resposta da atualização:", { data, error });
 
       if (error) throw error;
 
